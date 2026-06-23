@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<vnx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="/usr/share/xml/vnx/vnx-2.00.xsd">
+
+  <global>
+    <version>2.0</version>
+    <scenario_name>tfg_hardslicing_v1</scenario_name>
+    <vm_mgmt type="none"/>
+    <vm_defaults>
+      <console id="0" display="no"/>
+      <console id="1" display="yes"/>
+    </vm_defaults>
+  </global>
+
+  <net name="net_h1_r1" mode="virtual_bridge"/>
+  <net name="net_h2_r1" mode="virtual_bridge"/>
+  <net name="net_r1_r2" mode="virtual_bridge"/>
+  <net name="net_r2_h3" mode="virtual_bridge"/>
+  <net name="net_r2_h4" mode="virtual_bridge"/>
+
+  <vm name="hs_h1" type="lxc" arch="x86_64">
+    <filesystem type="cow">/usr/share/vnx/filesystems/rootfs_lxc_modern</filesystem>
+    <if id="1" net="net_h1_r1"/>
+  </vm>
+
+  <vm name="hs_h2" type="lxc" arch="x86_64">
+    <filesystem type="cow">/usr/share/vnx/filesystems/rootfs_lxc_modern</filesystem>
+    <if id="1" net="net_h2_r1"/>
+  </vm>
+
+  <vm name="hs_r1" type="lxc" arch="x86_64">
+    <filesystem type="cow">/usr/share/vnx/filesystems/rootfs_lxc_modern</filesystem>
+    <if id="1" net="net_h1_r1"/>
+    <if id="2" net="net_h2_r1"/>
+    <if id="3" net="net_r1_r2"/>
+  </vm>
+
+  <vm name="hs_r2" type="lxc" arch="x86_64">
+    <filesystem type="cow">/usr/share/vnx/filesystems/rootfs_lxc_modern</filesystem>
+    <if id="1" net="net_r1_r2"/>
+    <if id="2" net="net_r2_h3"/>
+    <if id="3" net="net_r2_h4"/>
+  </vm>
+
+  <vm name="hs_h3" type="lxc" arch="x86_64">
+    <filesystem type="cow">/usr/share/vnx/filesystems/rootfs_lxc_modern</filesystem>
+    <if id="1" net="net_r2_h3"/>
+  </vm>
+
+  <vm name="hs_h4" type="lxc" arch="x86_64">
+    <filesystem type="cow">/usr/share/vnx/filesystems/rootfs_lxc_modern</filesystem>
+    <if id="1" net="net_r2_h4"/>
+  </vm>
+
+</vnx>

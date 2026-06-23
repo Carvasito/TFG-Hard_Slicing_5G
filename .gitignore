@@ -1,0 +1,23 @@
+# Resultados y registros locales
+automatizacion_tfg/resultados/*
+!automatizacion_tfg/resultados/.gitkeep
+resultados_flexible/
+resultados_revision_*/
+resultados_*/
+*.log
+*.pcap
+*.pcapng
+
+# Temporales de editores y sistema
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Paquetes y copias locales
+*.zip
+*.tar
+*.tar.gz
