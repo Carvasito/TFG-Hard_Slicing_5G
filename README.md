@@ -1,8 +1,8 @@
 # Hard Slicing en redes de transporte 5G
 
-Plataforma experimental para el diseño, configuración, automatización y validación de mecanismos de **hard slicing** en una red de transporte 5G virtualizada sobre Linux.
+Plataforma experimental para diseñar, configurar, automatizar y validar mecanismos de **hard slicing** en una red de transporte 5G virtualizada sobre Linux.
 
-El repositorio forma parte del Trabajo Fin de Grado:
+Este repositorio forma parte del Trabajo Fin de Grado:
 
 **Diseño e implementación de rodajas de red con recursos dedicados para redes de transporte 5G**
 
@@ -14,39 +14,36 @@ El repositorio forma parte del Trabajo Fin de Grado:
 
 ---
 
-## 1. Objetivo del proyecto
+## 1. Alcance del proyecto
 
-El objetivo de esta plataforma es estudiar cómo proporcionar aislamiento y control de capacidad entre varios flujos que comparten un mismo tramo de transporte.
-
-Se implementan y evalúan dos escenarios independientes:
+La plataforma evalúa dos escenarios independientes sobre una topología común formada por cuatro hosts y dos routers Linux:
 
 1. **Channelized Subinterfaces**
-   - Separación de encaminamiento mediante VRF.
-   - Separación lógica mediante VLAN y subinterfaces.
-   - Políticas HTB independientes por subinterfaz.
-   - Perfil principal: 6 Mbit/s para la Slice A y 3 Mbit/s para la Slice B.
+   - separación de encaminamiento mediante VRF;
+   - diferenciación mediante VLAN y subinterfaces;
+   - políticas HTB independientes por subinterfaz;
+   - perfil principal de 6 Mbit/s para la Slice A y 3 Mbit/s para la Slice B.
 
 2. **Flexible Channels**
-   - Uso directo de la interfaz base compartida.
-   - Clasificación mediante filtros IP.
-   - Clases HTB independientes dentro de una jerarquía común.
-   - Configuración dinámica de:
-     - capacidad total;
-     - capacidad del Canal A;
-     - capacidad del Canal B.
-   - Validación obligatoria:
+   - utilización directa de la interfaz base compartida;
+   - clasificación mediante filtros IP;
+   - clases HTB independientes dentro de una jerarquía común;
+   - configuración dinámica de la capacidad total y de las asignaciones de los canales A y B;
+   - validación obligatoria de que `A + B <= capacidad total`.
 
-     ```text
-     Capacidad A + Capacidad B <= Capacidad total
-     ```
-
-La implementación es una **aproximación funcional basada en Linux**. No reproduce hardware FlexE ni funciones propietarias internas de equipos comerciales.
+La implementación es una **aproximación funcional basada en Linux**. No implementa hardware FlexE ni reproduce funciones propietarias internas de equipos comerciales.
 
 ---
 
 ## 2. Arquitectura experimental
 
-La topología está formada por cuatro hosts y dos routers Linux desplegados mediante VNX y contenedores LXC.
+La topología se define en:
+
+```text
+tfg_hardslicing_v1.xml
+```
+
+Nodos:
 
 ```text
 hs_h1 ---- hs_r1 ===== hs_r2 ---- hs_h3
@@ -54,103 +51,25 @@ hs_h1 ---- hs_r1 ===== hs_r2 ---- hs_h3
 hs_h2 --------           -------- hs_h4
 ```
 
-El tramo compartido principal es:
-
-```text
-hs_r1 eth3 <-> hs_r2 eth1
-```
-
-Flujos utilizados:
+Flujos principales:
 
 ```text
 Flujo A: hs_h1 -> hs_r1 -> hs_r2 -> hs_h3
 Flujo B: hs_h2 -> hs_r1 -> hs_r2 -> hs_h4
 ```
 
----
-
-## 3. Escenarios implementados
-
-### 3.1. Channelized Subinterfaces
-
-Cada slice utiliza:
-
-- una VRF propia;
-- una VLAN propia;
-- una subinterfaz propia;
-- una tabla de encaminamiento independiente;
-- una política HTB independiente.
-
-Asignación principal:
-
-| Elemento | Slice A | Slice B |
-|---|---:|---:|
-| VRF | `vrfA` | `vrfB` |
-| Tabla de rutas | `10` | `20` |
-| VLAN | `10` | `20` |
-| Subinterfaz en `hs_r1` | `eth3.10` | `eth3.20` |
-| Subinterfaz en `hs_r2` | `eth1.10` | `eth1.20` |
-| Capacidad | `6 Mbit/s` | `3 Mbit/s` |
-
-Este escenario permite validar:
-
-- aislamiento de encaminamiento;
-- ausencia de conectividad cruzada;
-- uso simultáneo de VLAN 10 y VLAN 20;
-- control de capacidad independiente;
-- comportamiento bajo sobresuscripción;
-- comparación frente a una cola compartida.
-
-### 3.2. Flexible Channels
-
-Los dos canales utilizan la misma interfaz base:
+Tramo de transporte compartido:
 
 ```text
-hs_r1 eth3
+hs_r1 eth3 <-> hs_r2 eth1
 ```
-
-La clasificación se realiza mediante dirección IP de destino:
-
-| Canal | Destino | Clase HTB |
-|---|---|---|
-| Canal A | `10.0.3.2` | `1:10` |
-| Canal B | `10.0.4.2` | `1:20` |
-| Tráfico no clasificado | resto | `1:30` |
-
-El controlador solicita únicamente:
-
-```text
-Capacidad total
-Capacidad Canal A
-Capacidad Canal B
-```
-
-No se utilizan slots ni tamaños de slot.
-
-Ejemplo válido:
-
-```text
-Capacidad total: 10
-Canal A: 6
-Canal B: 3
-```
-
-Ejemplo inválido:
-
-```text
-Capacidad total: 10
-Canal A: 8
-Canal B: 3
-```
-
-El segundo ejemplo se rechaza porque `8 + 3 > 10`.
 
 ---
 
-## 4. Estructura del repositorio
+## 3. Estructura del repositorio
 
 ```text
-tfg-hard-slicing-5g/
+TFG-Hard_Slicing_5G/
 ├── tfg_hardslicing_v1.xml
 ├── scripts_real/
 │   ├── 00_prepare_real_hard_slicing.sh
@@ -179,6 +98,9 @@ tfg-hard-slicing-5g/
 │   └── resultados/
 │       └── .gitkeep
 ├── docs/
+│   ├── ARQUITECTURA.md
+│   ├── PRUEBAS.md
+│   └── RESOLUCION_DE_PROBLEMAS.md
 ├── tools/
 │   └── check_repository.sh
 ├── README.md
@@ -188,52 +110,178 @@ tfg-hard-slicing-5g/
 
 ---
 
-## 5. Requisitos
+## 4. Entorno necesario
 
-La plataforma está pensada para ejecutarse sobre Linux.
+La plataforma necesita un sistema Linux con **VNX** y **LXC** operativos. El repositorio contiene el escenario y los scripts, pero no instala VNX ni crea su sistema de archivos base.
 
-Dependencias principales:
+### 4.1. Dependencias del equipo anfitrión
 
+Herramientas requeridas:
+
+- Git;
 - Bash;
 - VNX;
 - LXC;
+- `sudo`;
+- `awk`;
+- `grep`;
+- `sed`;
+- `date`;
+- `timeout`;
+- `tee`;
 - `iproute2`;
-- `tc`;
 - `ping`;
-- `tcpdump`;
 - `iperf3`;
-- permisos de administración mediante `sudo`;
+- `tcpdump`;
+- `procps`;
 - módulos del kernel `vrf` y `8021q`.
 
-Comprobación rápida:
+En una distribución basada en Debian o Ubuntu pueden instalarse las herramientas disponibles en los repositorios mediante:
 
 ```bash
-for CMD in bash awk grep sed timeout tee lxc-attach lxc-info lxc-ls vnx ip tc ping iperf3 tcpdump; do
-    command -v "$CMD" >/dev/null 2>&1 \
-        && echo "[OK] $CMD" \
-        || echo "[FALTA] $CMD"
+sudo apt update
+sudo apt install -y \
+  git bash gawk grep sed coreutils \
+  lxc lxc-utils \
+  iproute2 iputils-ping \
+  iperf3 tcpdump procps
+```
+
+VNX debe instalarse siguiendo la documentación oficial del DIT-UPM. Después de instalarlo, debe existir el comando:
+
+```bash
+command -v vnx
+```
+
+Comprobación completa del anfitrión:
+
+```bash
+for CMD in \
+  git bash sudo awk grep sed date timeout tee \
+  lxc-attach lxc-info lxc-ls \
+  vnx ip tc ping iperf3 tcpdump pkill ss; do
+    if command -v "$CMD" >/dev/null 2>&1; then
+        echo "[OK] $CMD"
+    else
+        echo "[FALTA] $CMD"
+    fi
 done
 ```
 
-Carga de módulos:
+### 4.2. Módulos del kernel
+
+Cargar los módulos requeridos:
 
 ```bash
 sudo modprobe vrf
 sudo modprobe 8021q
 ```
 
----
-
-## 6. Instalación
-
-Clonar el repositorio:
+Comprobarlos:
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+lsmod | grep -E '(^vrf|8021q)'
+```
+
+### 4.3. Sistema de archivos utilizado por VNX
+
+El fichero XML utiliza esta imagen LXC:
+
+```text
+/usr/share/vnx/filesystems/rootfs_lxc_modern
+```
+
+Debe existir antes de desplegar la maqueta:
+
+```bash
+if [ -e /usr/share/vnx/filesystems/rootfs_lxc_modern ]; then
+    echo "[OK] rootfs_lxc_modern disponible"
+else
+    echo "[ERROR] Falta /usr/share/vnx/filesystems/rootfs_lxc_modern"
+fi
+```
+
+Si no existe, debe instalarse o prepararse conforme a la documentación de VNX antes de continuar.
+
+### 4.4. Herramientas requeridas dentro de los contenedores
+
+Los hosts `hs_h1`, `hs_h2`, `hs_h3` y `hs_h4` necesitan:
+
+```text
+ip
+ping
+iperf3
+pkill
+ss
+```
+
+Los routers `hs_r1` y `hs_r2` necesitan:
+
+```text
+ip
+tc
+ping
+tcpdump
+```
+
+El controlador comprueba automáticamente estas dependencias durante la fase de comprobaciones previas.
+
+Si la imagen LXC está basada en Debian o Ubuntu y falta alguna herramienta, puede instalarse dentro del contenedor correspondiente. Ejemplo:
+
+```bash
+sudo lxc-attach -n hs_h1 -- apt update
+sudo lxc-attach -n hs_h1 -- apt install -y \
+  iproute2 iputils-ping iperf3 procps
+```
+
+Para los routers:
+
+```bash
+sudo lxc-attach -n hs_r1 -- apt update
+sudo lxc-attach -n hs_r1 -- apt install -y \
+  iproute2 iputils-ping tcpdump procps
+```
+
+Repita la instalación en los demás nodos que lo necesiten.
+
+---
+
+## 5. Descarga del repositorio
+
+Clonar el proyecto usando un nombre local uniforme:
+
+```bash
+git clone \
+  https://github.com/Carvasito/TFG-Hard_Slicing_5G.git \
+  tfg-hard-slicing-5g
+
 cd tfg-hard-slicing-5g
 ```
 
-Aplicar permisos:
+Comprobar el contenido:
+
+```bash
+ls
+```
+
+Deben aparecer:
+
+```text
+README.md
+LICENSE
+tfg_hardslicing_v1.xml
+scripts_real
+scripts_flexible
+automatizacion_tfg
+docs
+tools
+```
+
+---
+
+## 6. Preparación inicial
+
+Aplicar permisos de ejecución:
 
 ```bash
 chmod +x tools/check_repository.sh
@@ -243,27 +291,42 @@ chmod +x scripts_real/*.sh
 chmod +x scripts_flexible/*.sh
 ```
 
-Ejecutar el instalador:
+Ejecutar el preparador local:
 
 ```bash
 ./automatizacion_tfg/instalar.sh
 ```
 
-Validar la estructura:
+Este script **no instala VNX ni paquetes del sistema**. Su función es:
+
+- aplicar permisos a la automatización;
+- crear el directorio de resultados;
+- mostrar el comando de ejecución del controlador.
+
+Validar el contenido del repositorio:
 
 ```bash
 ./tools/check_repository.sh
 ```
 
-El resultado esperado es:
+Resultado esperado:
 
 ```text
 Repositorio validado correctamente.
 ```
 
+El comprobador revisa:
+
+- existencia de los ficheros esenciales;
+- sintaxis Bash;
+- permisos de ejecución;
+- ausencia de rutas y nombres obsoletos en los componentes principales.
+
 ---
 
-## 7. Despliegue de la maqueta
+## 7. Despliegue de la maqueta VNX
+
+La automatización puede intentar iniciar VNX cuando detecta que los contenedores no están activos. No obstante, para la primera ejecución se recomienda desplegar la maqueta manualmente y comprobar el resultado.
 
 Crear el escenario:
 
@@ -271,7 +334,7 @@ Crear el escenario:
 sudo vnx -f tfg_hardslicing_v1.xml --create
 ```
 
-Comprobar contenedores:
+Comprobar los contenedores:
 
 ```bash
 sudo lxc-ls --fancy
@@ -288,11 +351,40 @@ hs_r1
 hs_r2
 ```
 
+Comprobación individual:
+
+```bash
+for NODO in hs_h1 hs_h2 hs_h3 hs_h4 hs_r1 hs_r2; do
+    echo "===== $NODO ====="
+    sudo lxc-info -n "$NODO"
+done
+```
+
+Si alguno no está activo, no continúe con las pruebas. Revise primero:
+
+- instalación de VNX;
+- estado de LXC;
+- existencia de `rootfs_lxc_modern`;
+- salida del comando de creación;
+- posibles escenarios VNX parciales anteriores.
+
+Para destruir un estado parcial:
+
+```bash
+sudo vnx -f tfg_hardslicing_v1.xml --destroy
+```
+
+Después puede volver a crearse:
+
+```bash
+sudo vnx -f tfg_hardslicing_v1.xml --create
+```
+
 ---
 
-## 8. Ejecución del controlador
+## 8. Ejecución recomendada
 
-Desde la raíz del proyecto:
+Con los contenedores activos, ejecutar:
 
 ```bash
 ./automatizacion_tfg/controlador_tfg.sh
@@ -300,42 +392,74 @@ Desde la raíz del proyecto:
 
 El menú principal permite:
 
-- preparar Channelized Subinterfaces;
-- preparar Flexible Channels;
-- ejecutar comprobaciones previas;
-- detener procesos de prueba;
-- abrir la última carpeta de resultados;
-- salir.
+1. preparar Channelized Subinterfaces y abrir sus pruebas;
+2. preparar Flexible Channels y abrir sus pruebas;
+3. ejecutar comprobaciones previas;
+4. detener procesos de prueba;
+5. abrir la última carpeta de resultados;
+6. salir.
 
-La preparación de cada escenario incluye:
+En la primera ejecución se recomienda seleccionar primero:
 
-1. limpieza de configuraciones incompatibles;
-2. aplicación de direccionamiento y rutas;
-3. configuración de interfaces o clases;
-4. validación del estado resultante;
-5. apertura de un menú de pruebas específico.
+```text
+Ejecutar comprobaciones previas
+```
+
+El controlador valida:
+
+- permisos `sudo`;
+- dependencias del anfitrión;
+- scripts requeridos;
+- estado de los seis contenedores;
+- comandos necesarios dentro de cada contenedor.
+
+La preparación de un escenario solo debe considerarse válida cuando el controlador muestra que todas sus comprobaciones han sido superadas.
 
 ---
 
-## 9. Pruebas de Channelized Subinterfaces
+## 9. Channelized Subinterfaces
 
-### 9.1. Preparación manual
+### 9.1. Diseño aplicado
+
+| Elemento | Slice A | Slice B |
+|---|---:|---:|
+| Flujo | `hs_h1 -> hs_h3` | `hs_h2 -> hs_h4` |
+| VRF | `vrfA` | `vrfB` |
+| Tabla de rutas | `10` | `20` |
+| VLAN | `10` | `20` |
+| Subinterfaz en `hs_r1` | `eth3.10` | `eth3.20` |
+| Subinterfaz en `hs_r2` | `eth1.10` | `eth1.20` |
+| Límite HTB | `6 Mbit/s` | `3 Mbit/s` |
+
+Las políticas de capacidad se aplican principalmente en el sentido:
+
+```text
+hs_r1 -> hs_r2
+```
+
+### 9.2. Preparación manual
 
 ```bash
 sudo ./scripts_real/00_prepare_real_hard_slicing.sh
 sudo ./scripts_real/01_setup_vrf_subinterfaces.sh
 sudo ./scripts_real/02_apply_hard_slicing_channels_tuned.sh
 sudo ./scripts_real/03_show_real_slicing.sh
+sudo ./scripts_real/04_test_vrf_isolation.sh
 ```
 
-### 9.2. Comprobación de VRF
+### 9.3. Comprobación de VRF y rutas
 
 ```bash
 sudo lxc-attach -n hs_r1 -- ip -d link show type vrf
+sudo lxc-attach -n hs_r1 -- ip route show vrf vrfA
+sudo lxc-attach -n hs_r1 -- ip route show vrf vrfB
+
 sudo lxc-attach -n hs_r2 -- ip -d link show type vrf
+sudo lxc-attach -n hs_r2 -- ip route show vrf vrfA
+sudo lxc-attach -n hs_r2 -- ip route show vrf vrfB
 ```
 
-### 9.3. Comprobación de subinterfaces
+### 9.4. Comprobación de subinterfaces
 
 ```bash
 sudo lxc-attach -n hs_r1 -- ip -d link show eth3.10
@@ -344,30 +468,28 @@ sudo lxc-attach -n hs_r2 -- ip -d link show eth1.10
 sudo lxc-attach -n hs_r2 -- ip -d link show eth1.20
 ```
 
-### 9.4. Validación de aislamiento
+### 9.5. Aislamiento de encaminamiento
 
 ```bash
 sudo ./scripts_real/04_test_vrf_isolation.sh
 ```
 
-Debe existir conectividad interna:
+Resultados esperados:
 
 ```text
-hs_h1 -> hs_h3
-hs_h2 -> hs_h4
+hs_h1 -> hs_h3: conectividad
+hs_h2 -> hs_h4: conectividad
+hs_h1 -> hs_h4: sin conectividad
+hs_h2 -> hs_h3: sin conectividad
 ```
 
-Deben fallar las comunicaciones cruzadas:
+### 9.6. Captura VLAN
 
-```text
-hs_h1 -> hs_h4
-hs_h2 -> hs_h3
-```
-
-### 9.5. Captura VLAN
+Con tráfico activo en ambas slices:
 
 ```bash
-sudo lxc-attach -n hs_r1 -- tcpdump -i eth3 -e -n 'vlan'
+sudo lxc-attach -n hs_r1 -- \
+  tcpdump -i eth3 -e -n 'vlan'
 ```
 
 La captura debe mostrar tráfico con:
@@ -377,7 +499,7 @@ vlan 10
 vlan 20
 ```
 
-### 9.6. Contadores HTB
+### 9.7. Contadores HTB
 
 ```bash
 sudo lxc-attach -n hs_r1 -- tc -s class show dev eth3.10
@@ -386,35 +508,83 @@ sudo lxc-attach -n hs_r1 -- tc -s class show dev eth3.20
 
 ---
 
-## 10. Pruebas de Flexible Channels
+## 10. Flexible Channels
 
-### 10.1. Preparación manual
+### 10.1. Diseño aplicado
+
+Los dos canales comparten:
+
+```text
+hs_r1 eth3
+```
+
+Clasificación principal:
+
+| Canal | Destino | Clase HTB |
+|---|---|---|
+| Canal A | `10.0.3.2` | `1:10` |
+| Canal B | `10.0.4.2` | `1:20` |
+| Tráfico no clasificado | resto | `1:30` |
+
+El controlador solicita:
+
+```text
+capacidad total
+capacidad Canal A
+capacidad Canal B
+```
+
+Debe cumplirse:
+
+```text
+A + B <= capacidad total
+```
+
+No se utilizan parámetros adicionales de granularidad.
+
+### 10.2. Preparación interactiva
 
 ```bash
 sudo ./scripts_flexible/01_setup_flexible_channels_base.sh
-sudo ./scripts_flexible/02_flexible_channel_controller.sh
+./scripts_flexible/02_flexible_channel_controller.sh
 ```
 
-El controlador solicitará:
+### 10.3. Preparación no interactiva
 
-```text
-Capacidad total
-Capacidad Canal A
-Capacidad Canal B
-```
-
-### 10.2. Ejecución no interactiva
+Perfil principal:
 
 ```bash
 sudo ./scripts_flexible/01_setup_flexible_channels_base.sh
 
 ./scripts_flexible/02_flexible_channel_controller.sh \
-    --total 10 \
-    --a 6 \
-    --b 3
+  --total 10 \
+  --a 6 \
+  --b 3
 ```
 
-### 10.3. Comprobación de clases
+Se admiten valores decimales con punto o coma.
+
+Ejemplo válido:
+
+```bash
+./scripts_flexible/02_flexible_channel_controller.sh \
+  --total 12 \
+  --a 7 \
+  --b 4
+```
+
+Ejemplo inválido:
+
+```bash
+./scripts_flexible/02_flexible_channel_controller.sh \
+  --total 10 \
+  --a 8 \
+  --b 3
+```
+
+El último perfil debe rechazarse antes de modificar la jerarquía porque `8 + 3 > 10`.
+
+### 10.4. Comprobación de clases y filtros
 
 ```bash
 sudo lxc-attach -n hs_r1 -- tc -s qdisc show dev eth3
@@ -422,42 +592,39 @@ sudo lxc-attach -n hs_r1 -- tc -s class show dev eth3
 sudo lxc-attach -n hs_r1 -- tc filter show dev eth3 parent 1:
 ```
 
-Deben aparecer:
+Deben aparecer las clases:
 
 ```text
-class htb 1:1
-class htb 1:10
-class htb 1:20
-class htb 1:30
+1:1
+1:10
+1:20
+1:30
 ```
 
-### 10.4. Conectividad
+### 10.5. Conectividad
 
 ```bash
 sudo lxc-attach -n hs_h1 -- ping -c 3 10.0.3.2
 sudo lxc-attach -n hs_h2 -- ping -c 3 10.0.4.2
 ```
 
-### 10.5. Pruebas de tráfico
+### 10.6. Pruebas específicas
 
 ```bash
 sudo ./scripts_flexible/03_test_flexible_channels.sh
 ```
 
+También pueden ejecutarse desde el menú Flexible Channels del controlador transversal.
+
 ---
 
-## 11. Automatización y trazabilidad
+## 11. Resultados y trazabilidad
 
-Cada preparación crea un directorio independiente dentro de:
+Cada preparación automatizada crea un directorio independiente:
 
 ```text
 automatizacion_tfg/resultados/
-```
-
-Formato de nombre:
-
-```text
-AAAAMMDD_HHMMSS_<escenario>_<perfil>
+└── AAAAMMDD_HHMMSS_escenario_perfil/
 ```
 
 Ejemplos:
@@ -487,24 +654,61 @@ apunta a la ejecución más reciente.
 Consulta rápida:
 
 ```bash
+ls -la automatizacion_tfg/resultados
+cat automatizacion_tfg/resultados/ultima_ejecucion/metadata.txt
 cat automatizacion_tfg/resultados/ultima_ejecucion/resultados.tsv
 ```
 
+Los resultados locales están excluidos del control de versiones mediante `.gitignore`.
+
 ---
 
-## 12. Limpieza y apagado
+## 12. Configuración general de las pruebas
+
+Los parámetros generales se encuentran en:
+
+```text
+automatizacion_tfg/config/automatizacion.conf
+```
+
+Valores principales de la versión publicada:
+
+```text
+Duración de tráfico: 30 s
+Duración de RTT: 20 s
+Duración de captura: 15 s
+Puerto Canal A: 5001
+Puerto Canal B: 5002
+Channelized A: 6 Mbit/s
+Channelized B: 3 Mbit/s
+Tasa estable A: 5,20 Mbit/s
+Tasa estable B: 2,60 Mbit/s
+Flexible total: 10 Mbit/s
+Flexible A: 6 Mbit/s
+Flexible B: 3 Mbit/s
+```
+
+Antes de modificar estos valores, debe comprobarse que las tasas ofrecidas y los límites siguen siendo coherentes con las validaciones implementadas.
+
+---
+
+## 13. Detención y limpieza
 
 Detener procesos de prueba:
 
 ```bash
-for NODO in hs_h1 hs_h2 hs_h3 hs_h4 hs_r1 hs_r2; do
-    sudo lxc-attach -n "$NODO" -- pkill iperf3 2>/dev/null || true
-    sudo lxc-attach -n "$NODO" -- pkill ping 2>/dev/null || true
-    sudo lxc-attach -n "$NODO" -- pkill tcpdump 2>/dev/null || true
+for NODO in hs_h1 hs_h2 hs_h3 hs_h4; do
+    sudo lxc-attach -n "$NODO" -- pkill -x iperf3 2>/dev/null || true
+    sudo lxc-attach -n "$NODO" -- pkill -x iperf 2>/dev/null || true
+    sudo lxc-attach -n "$NODO" -- pkill -x ping 2>/dev/null || true
+done
+
+for NODO in hs_r1 hs_r2; do
+    sudo lxc-attach -n "$NODO" -- pkill -x tcpdump 2>/dev/null || true
 done
 ```
 
-Eliminar el escenario:
+Destruir la maqueta:
 
 ```bash
 sudo vnx -f tfg_hardslicing_v1.xml --destroy
@@ -512,110 +716,209 @@ sudo vnx -f tfg_hardslicing_v1.xml --destroy
 
 ---
 
-## 13. Validación del repositorio
+## 14. Resolución de problemas
 
-Comprobación estática:
+### 14.1. `vnx: command not found`
+
+VNX no está instalado o no se encuentra en `PATH`.
 
 ```bash
+command -v vnx
+```
+
+Instale VNX conforme a la documentación oficial del DIT-UPM y vuelva a abrir el terminal.
+
+### 14.2. Falta `rootfs_lxc_modern`
+
+Comprobar:
+
+```bash
+ls -ld /usr/share/vnx/filesystems/rootfs_lxc_modern
+```
+
+La imagen debe instalarse o generarse antes de desplegar el escenario.
+
+### 14.3. Un contenedor no está `RUNNING`
+
+```bash
+sudo lxc-info -n hs_h1
+```
+
+Destruir un posible estado parcial y recrear:
+
+```bash
+sudo vnx -f tfg_hardslicing_v1.xml --destroy
+sudo vnx -f tfg_hardslicing_v1.xml --create
+```
+
+### 14.4. Falta una herramienta dentro de un contenedor
+
+Ejemplo:
+
+```bash
+sudo lxc-attach -n hs_h1 -- command -v iperf3
+```
+
+Instale el paquete correspondiente dentro de la imagen o del contenedor y repita las comprobaciones previas.
+
+### 14.5. `iperf3` indica que el servidor está ocupado
+
+```bash
+for NODO in hs_h1 hs_h2 hs_h3 hs_h4; do
+    sudo lxc-attach -n "$NODO" -- pkill -x iperf3 2>/dev/null || true
+done
+```
+
+Después vuelva a ejecutar la prueba.
+
+### 14.6. No aparecen VLAN en `tcpdump`
+
+Compruebe que:
+
+- captura sobre `hs_r1 eth3`;
+- las dos slices están generando tráfico;
+- existen `eth3.10` y `eth3.20`;
+- se ha preparado el escenario Channelized Subinterfaces.
+
+### 14.7. `Permission denied` en resultados
+
+```bash
+sudo chown -R "$USER:$USER" automatizacion_tfg/resultados
+chmod -R u+rwX automatizacion_tfg/resultados
+```
+
+Aplique estos permisos únicamente sobre el directorio de resultados.
+
+### 14.8. Persisten elementos del escenario anterior
+
+No corrija únicamente una interfaz aislada. Vuelva al menú principal y prepare de nuevo el escenario deseado. La automatización elimina las configuraciones incompatibles antes de aplicar la nueva.
+
+### 14.9. La validación estática falla por permisos
+
+```bash
+chmod +x tools/check_repository.sh
+chmod +x automatizacion_tfg/*.sh
+chmod +x automatizacion_tfg/lib/*.sh
+chmod +x scripts_real/*.sh
+chmod +x scripts_flexible/*.sh
+
 ./tools/check_repository.sh
 ```
 
-Comprobación de sintaxis Bash:
+---
+
+## 15. Secuencia mínima completa
+
+Una vez instalados VNX, LXC y las dependencias:
 
 ```bash
-find . -name "*.sh" -type f -exec bash -n {} \;
+git clone \
+  https://github.com/Carvasito/TFG-Hard_Slicing_5G.git \
+  tfg-hard-slicing-5g
+
+cd tfg-hard-slicing-5g
+
+chmod +x tools/check_repository.sh
+chmod +x automatizacion_tfg/*.sh
+chmod +x automatizacion_tfg/lib/*.sh
+chmod +x scripts_real/*.sh
+chmod +x scripts_flexible/*.sh
+
+./automatizacion_tfg/instalar.sh
+./tools/check_repository.sh
+
+sudo modprobe vrf
+sudo modprobe 8021q
+
+test -e /usr/share/vnx/filesystems/rootfs_lxc_modern
+
+sudo vnx -f tfg_hardslicing_v1.xml --create
+sudo lxc-ls --fancy
+
+./automatizacion_tfg/controlador_tfg.sh
 ```
 
-Búsqueda de errores en resultados:
+La ejecución solo debe continuar si:
 
-```bash
-grep -RniE 'ERROR|command not found|No such file|Permission denied' \
-    automatizacion_tfg/resultados/
-```
+- `check_repository.sh` termina correctamente;
+- existe `rootfs_lxc_modern`;
+- los seis contenedores están en estado `RUNNING`;
+- las comprobaciones previas del controlador se superan.
 
 ---
 
-## 14. Resultados principales del TFG
+## 16. Reproducibilidad y limitaciones
 
-El perfil principal utilizado en ambos escenarios es:
+El repositorio permite reproducir:
 
-```text
-Slice o Canal A: 6 Mbit/s
-Slice o Canal B: 3 Mbit/s
-```
+- la topología VNX;
+- la configuración de VRF;
+- las VLAN y subinterfaces;
+- las jerarquías HTB;
+- los filtros de clasificación;
+- las pruebas de conectividad;
+- las pruebas de caudal;
+- las capturas VLAN;
+- las pruebas de sobresuscripción;
+- la comparación con cola compartida;
+- la generación estructurada de resultados.
 
-En las pruebas de sobresuscripción:
+La plataforma no garantiza compatibilidad con cualquier distribución, versión de VNX, versión del kernel o imagen LXC. El comportamiento validado corresponde a un entorno Linux compatible con los requisitos descritos.
 
-- Channelized Subinterfaces mantuvo estable el tráfico de la Slice A mientras la Slice B ofrecía tráfico por encima de su capacidad.
-- Flexible Channels limitó el exceso dentro de la clase asociada al Canal B, manteniendo estable el tráfico del Canal A.
-- La comparación frente a una cola compartida mostró una degradación significativa cuando ambos flujos competían en la misma cola.
-
-Los valores exactos, capturas y discusión completa se documentan en la memoria del TFG.
-
----
-
-## 15. Alcance y limitaciones
-
-La plataforma demuestra:
-
-- separación de encaminamiento mediante VRF;
-- diferenciación mediante VLAN y subinterfaces;
-- control de capacidad mediante HTB;
-- clasificación por filtros;
-- comportamiento bajo tráfico simultáneo;
-- aislamiento funcional ante sobresuscripción;
-- automatización y trazabilidad de pruebas.
-
-La plataforma no demuestra:
+La maqueta demuestra aislamiento y control de capacidad mediante mecanismos software. No demuestra:
 
 - reserva física de recursos;
 - implementación hardware FlexE;
 - arquitectura interna de equipos comerciales;
-- garantías equivalentes a un despliegue de operador;
-- caracterización estadística completa del rendimiento.
-
-Las conclusiones deben interpretarse dentro del alcance de una plataforma virtualizada basada en Linux, VNX y LXC.
+- prestaciones equivalentes a una red de operador;
+- escalabilidad estadística o de gran tamaño.
 
 ---
 
-## 16. Reproducibilidad
+## 17. Documentación adicional
 
-Para reproducir el entorno:
-
-1. instalar VNX, LXC y las dependencias;
-2. clonar el repositorio;
-3. ejecutar `./tools/check_repository.sh`;
-4. crear la maqueta VNX;
-5. ejecutar `./automatizacion_tfg/controlador_tfg.sh`;
-6. seleccionar el escenario;
-7. ejecutar las pruebas;
-8. consultar los resultados generados.
+- [Arquitectura](docs/ARQUITECTURA.md)
+- [Pruebas disponibles](docs/PRUEBAS.md)
+- [Resolución de problemas](docs/RESOLUCION_DE_PROBLEMAS.md)
+- [Automatización](automatizacion_tfg/README.md)
 
 ---
 
-## 17. Versión asociada a la memoria
+## 18. Versión asociada al TFG
 
-La versión estable asociada a la memoria puede publicarse mediante una etiqueta Git:
+Repositorio:
 
-```bash
-git tag -a v1.0-TFG -m "Versión asociada a la memoria del TFG"
-git push origin v1.0-TFG
+```text
+https://github.com/Carvasito/TFG-Hard_Slicing_5G
 ```
 
-También puede identificarse mediante el commit exacto:
+Para identificar una versión concreta:
 
 ```bash
 git rev-parse HEAD
 ```
 
----
+Si existe una etiqueta estable:
 
-## 18. Autor
-
-**Álvaro Carvajal Montes**
-
-Trabajo Fin de Grado, Universidad Politécnica de Madrid, 2026.
+```bash
+git checkout v1.0-TFG
+```
 
 ---
 
+## 19. Licencia
 
+El proyecto se distribuye bajo la licencia incluida en:
+
+```text
+LICENSE
+```
+
+---
+
+## 20. Autor
+
+**Álvaro Carvajal Montes**  
+Trabajo Fin de Grado  
+Universidad Politécnica de Madrid  
+2026
